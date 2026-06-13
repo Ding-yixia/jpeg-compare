@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+
+# Build artifacts
+build/
+*.obj
+*.o
+*.lib
+*.exp
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test results (keep directory, ignore contents)
+results/*
+!results/.gitkeep
+
+# Large data files
+data/wallpapers/*.jpg
+data/wallpapers/*.jpeg
+data/wallpapers/*.png
+!data/wallpapers/.gitkeep
+
+# Logs
+*.log
+download.log
+
+# Compressed archives (keep manifests but not the archives themselves)
+*.zip
+*.tar.gz
+!data/wallpapers.zip
