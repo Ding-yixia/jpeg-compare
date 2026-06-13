@@ -24,7 +24,6 @@
 #include <cstring>
 #include <cmath>
 #include <chrono>
-#include <csetjmp>
 
 /* libjpeg API — 所有兼容库都提供 jpeglib.h */
 #include "jpeglib.h"
@@ -66,7 +65,7 @@ Image read_ppm(const char* path) {
     img.data = new unsigned char[img.width * img.height * 3];
     size_t read = fread(img.data, 1, img.width * img.height * 3, fp);
     if (read != (size_t)img.width * img.height * 3) {
-        fprintf(stderr, "PPM 数据不完整: 期望 %d, 读取 %zu\n",
+        fprintf(stderr, "PPM 数据不完整: 期望 %d, 读取 %d\n",
                 img.width * img.height * 3, (int)read);
         delete[] img.data;
         img.data = nullptr;
@@ -79,15 +78,9 @@ Image read_ppm(const char* path) {
  * JPEG 压缩 — 使用 libjpeg API
  * ================================================================ */
 
-struct jpeg_error_mgr_wrap {
-    struct jpeg_error_mgr pub;
-    jmp_buf setjmp_buffer;
-};
-
-static void jpeg_error_handler(j_common_ptr cinfo) {
-    jpeg_error_mgr_wrap* myerr = (jpeg_error_mgr_wrap*)cinfo->err;
+static void jpeg_error_exit(j_common_ptr cinfo) {
     (*cinfo->err->output_message)(cinfo);
-    longjmp(myerr->setjmp_buffer, 1);
+    exit(1);
 }
 
 bool compress_jpeg(const Image& img, const char* output_path,
@@ -96,15 +89,10 @@ bool compress_jpeg(const Image& img, const char* output_path,
     if (!fp) { fprintf(stderr, "无法创建: %s\n", output_path); return false; }
 
     struct jpeg_compress_struct cinfo;
-    struct jpeg_error_mgr_wrap jerr;
-    cinfo.err = jpeg_std_error(&jerr.pub);
-    jerr.pub.error_exit = jpeg_error_handler;
+    struct jpeg_error_mgr jerr;
 
-    if (setjmp(jerr.setjmp_buffer)) {
-        jpeg_destroy_compress(&cinfo);
-        fclose(fp);
-        return false;
-    }
+    cinfo.err = jpeg_std_error(&jerr);
+    jerr.error_exit = jpeg_error_exit;
 
     jpeg_create_compress(&cinfo);
     jpeg_stdio_dest(&cinfo, fp);
@@ -192,6 +180,14 @@ int main(int argc, char* argv[]) {
 
     const char* backend = jpegli_mode ? "JPEGLI" : "MOZJPEG";
 
+    /* 格式化文件大小字符串 */
+    char size_str[32];
+    if (file_size > 1024 * 1024) {
+        snprintf(size_str, sizeof(size_str), "%.2f MB", file_size / (1024. * 1024.));
+    } else {
+        snprintf(size_str, sizeof(size_str), "%.1f KB", file_size / 1024.);
+    }
+
     printf("\n");
     printf("╔══════════════════════════════════════╗\n");
     printf("║  JPEG 压缩报告                        ║\n");
@@ -202,16 +198,7 @@ int main(int argc, char* argv[]) {
     printf("║  分辨率   : %-4d x %-20d ║\n", img.width, img.height);
     printf("║  质量     : %-26d ║\n", quality);
     printf("║────────────┬─────────────────────────╢\n");
-    printf("║  文件大小  : %-26s ║\n", file_size > 1024*1024 ?
-           ({
-               static char buf[32];
-               snprintf(buf, 32, "%.2f MB", file_size/(1024.*1024));
-               buf;
-           }) : ({
-               static char buf[32];
-               snprintf(buf, 32, "%.1f KB", file_size/1024.);
-               buf;
-           }));
+    printf("║  文件大小  : %-26s ║\n", size_str);
     printf("║  BPP      : %-26.4f ║\n", bpp);
     printf("║  读取耗时 : %-26.1f ║\n", read_ms);
     printf("║  编码耗时 : %-26.1f ║\n", enc_ms);

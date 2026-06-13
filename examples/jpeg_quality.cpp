@@ -55,8 +55,8 @@ struct Image {
         fclose(fp);
 
         if (read != data.size()) {
-            fprintf(stderr, "[ERROR] 数据不完整: 期望 %zu, 读取 %zu\n", data.size(), read);
-            return false;
+            fprintf(stderr, "[WARN] 数据不完整: 期望 %zu, 读取 %zu (尝试继续)\n", data.size(), read);
+            data.resize(read);
         }
         return true;
     }
