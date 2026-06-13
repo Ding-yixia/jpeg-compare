@@ -1,0 +1,14 @@
+# Build output directories
+/build
+/build*
+/bazel*
+
+# clangd
+.cache
+
+# The downloaded corpora files for benchmark.
+/third_party/corpora
+
+# Output plots
+tools/benchmark/metrics/plots
+tools/benchmark/metrics/results.csv
